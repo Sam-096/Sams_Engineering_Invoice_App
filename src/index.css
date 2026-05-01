@@ -845,6 +845,28 @@ textarea.sw-input { resize: vertical; }
 /* ═══════════════════════════════════════════════════════════════
    PRINT
 ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   PDF EXPORT ROOT
+   Off-screen but always-rendered copy of the document, mounted via
+   portal to <body>. Captured by html2canvas regardless of mobile
+   preview overlay state. Fixed A4 width — no transforms, no zoom,
+   no responsive shrinking. Hidden from screen and print so it never
+   appears in either output.
+═══════════════════════════════════════════════════════════════ */
+.pdf-export-root {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 210mm;
+  background: #ffffff;
+  pointer-events: none;
+  z-index: -1;
+  contain: layout style;
+}
+@media print {
+  .pdf-export-root { display: none !important; }
+}
+
 @media print {
   @page { size: A4 portrait; margin: 0; }
 

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, RotateCcw, Eye, X, Download } from 'lucide-react';
 
 interface Props {
@@ -17,6 +18,11 @@ interface Props {
  * Two-column shell: editor on the left, A4 preview on the right.
  * On screens narrower than 768px the preview is hidden by default and revealed
  * via an in-editor "Preview" toggle that overlays the form.
+ *
+ * NOTE: PDF export captures from a dedicated off-screen `PdfExportRoot` (mounted
+ * via portal to <body>) — NOT from the visible preview. This makes capture work
+ * even when the mobile preview overlay is closed (display: none) and avoids
+ * the mobile transform-scale that would otherwise shrink the captured output.
  */
 export function DocumentFormShell({
   title, subtitle, onPrint, onDownloadPdf, onReset, preview, children, disabledReason,
@@ -94,9 +100,29 @@ export function DocumentFormShell({
           </button>
         </div>
         <div className="form-shell__preview-scroll">
-          <div className="form-shell__preview-paper" id="document-preview-root">{preview}</div>
+          <div className="form-shell__preview-paper">{preview}</div>
         </div>
       </aside>
+
+      <PdfExportRoot>{preview}</PdfExportRoot>
     </div>
+  );
+}
+
+/**
+ * Off-screen, always-rendered, fixed A4-width copy of the preview. Captured by
+ * `usePdfExport` so PDF generation is independent of the visible UI state
+ * (mobile preview overlay open/closed, scaled, scrolled, etc.).
+ *
+ * Portal-mounted to <body> so no ancestor's `display:none`, transform, or
+ * overflow can affect the capture.
+ */
+function PdfExportRoot({ children }: { children: ReactNode }) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div id="document-preview-root" className="pdf-export-root" aria-hidden="true">
+      {children}
+    </div>,
+    document.body,
   );
 }
