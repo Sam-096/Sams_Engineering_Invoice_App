@@ -1,0 +1,452 @@
+/* ═══════════════════════════════════════════════════════════════
+   Print / preview document styles — A4 portrait
+   Mirrors the structure of SAMS' existing PDF samples:
+     ┌────────────────────────────────────────────────────────────┐
+     │ TITLE BAR (title centred · copy label right)               │
+     │ LETTERHEAD BANNER (one image: logo + name + address)       │
+     │ GSTIN | PAN strip                                          │
+     │ INFO: address column (50%)  │  meta KV column (50%)        │
+     │ ITEMS TABLE (cols vary by doc type)                        │
+     │   …items                                                   │
+     │   …empty filler rows (column borders only)                 │
+     │   BASIC AMOUNT row (full width) ────────────────► amount   │
+     │   ADD CGST / SGST / IGST rows                              │
+     │   TAX AMOUNT / TRANSPORTATION / GRAND TOTAL                │
+     │ AMOUNT IN WORDS row                                        │
+     │ BANK BLOCK (60%) │ SIGNATURE BLOCK (40%)                   │
+     │ DECLARATION + computer-copy notice                         │
+     └────────────────────────────────────────────────────────────┘
+═══════════════════════════════════════════════════════════════ */
+
+.pt-doc {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 6mm;
+  box-sizing: border-box;
+  font-family: var(--font);
+  font-size: 11px;
+  color: #000;
+  background: #fff;
+}
+
+.pt-frame {
+  border: 1.5px solid #000;
+}
+
+/* ── Title bar (inside frame, very top) ────────────────────── */
+.pt-title-bar {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1.5px solid #000;
+  position: relative;
+  min-height: 22px;
+}
+.pt-title-bar__title {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-style: italic;
+  text-decoration: underline;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.pt-title-bar__copy {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 10px;
+  border: 1px solid #000;
+  padding: 2px 8px;
+  background: #fff;
+}
+.pt-title-bar__sub {
+  text-align: center;
+  font-style: italic;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1.5px solid #000;
+}
+
+/* ── Letterhead banner (single image) ──────────────────────── */
+.pt-letterhead {
+  display: block;
+  border-bottom: 1.5px solid #000;
+}
+.pt-letterhead__img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── GSTIN | PAN strip (red, italic, bold) ─────────────────── */
+.pt-tax-strip {
+  display: flex;
+  padding: 4px 12px;
+  border-bottom: 1.5px solid #000;
+  font-weight: 800;
+  font-style: italic;
+  color: #C0392B;
+  font-size: 11.5px;
+}
+.pt-tax-strip__cell {
+  flex: 1;
+}
+.pt-tax-strip__cell--right {
+  text-align: right;
+}
+
+/* ── Info section: addresses + meta ────────────────────────── */
+.pt-info {
+  display: flex;
+  border-bottom: 1.5px solid #000;
+}
+.pt-info__addresses {
+  width: 50%;
+  border-right: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+}
+.pt-info__meta {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pt-address {
+  padding: 4px 8px;
+  font-size: 10.5px;
+  flex: 1;
+}
+.pt-address + .pt-address {
+  border-top: 1px solid #000;
+}
+.pt-address__heading {
+  font-weight: 700;
+  font-style: italic;
+  text-decoration: underline;
+}
+.pt-address__name {
+  font-weight: 700;
+  margin-top: 2px;
+}
+.pt-address__line {
+  font-size: 10.5px;
+}
+.pt-address__row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* ── Meta KV rows on the right column ──────────────────────── */
+.pt-kv {
+  display: flex;
+  border-bottom: 1px solid #000;
+  min-height: 22px;
+  align-items: stretch;
+}
+.pt-kv:last-child {
+  border-bottom: none;
+}
+.pt-kv__label {
+  flex: 0 0 40%;
+  padding: 4px 6px;
+  font-weight: 700;
+  border-right: 1px solid #000;
+  display: flex;
+  align-items: center;
+}
+.pt-kv__value {
+  flex: 1;
+  padding: 4px 6px;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 4-cell variant: Label | Value | Date : | Date Value */
+.pt-kv--with-date .pt-kv__label {
+  flex: 0 0 26%;
+}
+.pt-kv--with-date .pt-kv__value {
+  flex: 0 0 22%;
+  border-right: 1px solid #000;
+}
+.pt-kv--with-date .pt-kv__date-label {
+  flex: 0 0 14%;
+  padding: 4px 6px;
+  font-weight: 700;
+  border-right: 1px solid #000;
+  display: flex;
+  align-items: center;
+}
+.pt-kv--with-date .pt-kv__date-value {
+  flex: 1;
+  padding: 4px 6px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pt-kv--tall { min-height: 28px; }
+.pt-kv--grow { flex: 1; min-height: 28px; }
+
+/* Section divider inside the meta column (e.g. TERMS & CONDITIONS:) */
+.pt-kv-divider {
+  padding: 4px 8px;
+  font-weight: 700;
+  font-style: italic;
+  text-decoration: underline;
+  border-bottom: 1px solid #000;
+}
+
+.pt-kv-note {
+  padding: 2px 8px;
+  font-style: italic;
+  font-size: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #000;
+}
+
+/* ── Items table (continuous with totals/words) ────────────── */
+.pt-items {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.pt-items thead tr {
+  border-bottom: 1.5px solid #000;
+}
+.pt-items th {
+  padding: 6px 4px;
+  border-right: 1px solid #000;
+  font-weight: 700;
+  text-align: center;
+  font-size: 11px;
+  vertical-align: middle;
+}
+.pt-items th:last-child { border-right: none; }
+.pt-items td {
+  padding: 4px;
+  border-right: 1px solid #000;
+  vertical-align: top;
+  text-align: center;
+  font-size: 11px;
+}
+.pt-items td:last-child { border-right: none; }
+
+.pt-items__desc {
+  text-align: left;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+.pt-items__desc-extra {
+  font-style: italic;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.pt-items__desc-extra--right {
+  text-align: right;
+  display: block;
+}
+.pt-items__amount {
+  text-align: right;
+  padding-right: 8px;
+  font-weight: 600;
+}
+.pt-items__group td {
+  text-align: left;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* Empty filler rows: keep vertical column borders, no horizontal */
+.pt-items tr.pt-items__filler td {
+  border-bottom: none;
+  padding: 0;
+}
+
+/* Totals integrated as full-width rows, separated by a thicker top */
+.pt-items tr.pt-items__total td {
+  border-top: 1.5px solid #000;
+}
+.pt-items__total-label {
+  text-align: right !important;
+  font-weight: 700;
+  font-style: italic;
+  padding-right: 12px !important;
+  font-size: 12px;
+}
+.pt-items__total-percent {
+  font-weight: 700;
+  text-align: center;
+}
+.pt-items__total-amount {
+  text-align: right !important;
+  padding-right: 8px !important;
+  font-weight: 700;
+}
+.pt-items tr.pt-items__total--grand td {
+  background: #E6E6E6;
+  font-weight: 800;
+}
+
+/* ── Amount in words row ───────────────────────────────────── */
+.pt-words {
+  display: flex;
+  border-top: 1.5px solid #000;
+  align-items: stretch;
+}
+.pt-words__label {
+  flex: 0 0 22%;
+  padding: 6px 8px;
+  font-weight: 700;
+  border-right: 1px solid #000;
+}
+.pt-words__value {
+  flex: 1;
+  padding: 6px 8px;
+  font-style: italic;
+  font-weight: 700;
+}
+
+/* ── Bank + signature section ──────────────────────────────── */
+.pt-footer {
+  display: flex;
+  border-top: 1.5px solid #000;
+  min-height: 80px;
+}
+.pt-bank {
+  width: 60%;
+  border-right: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+}
+.pt-bank__row {
+  display: flex;
+  border-bottom: 1px solid #000;
+  min-height: 22px;
+}
+.pt-bank__row:last-child {
+  border-bottom: none;
+}
+.pt-bank__key {
+  flex: 0 0 38%;
+  padding: 4px 8px;
+  font-weight: 700;
+  border-right: 1px solid #000;
+  display: flex;
+  align-items: center;
+}
+.pt-bank__val {
+  flex: 1;
+  padding: 4px 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.pt-sign {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  text-align: center;
+  font-style: italic;
+}
+.pt-sign__top {
+  font-weight: 700;
+  font-style: italic;
+  font-size: 12px;
+}
+.pt-sign__bottom {
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* ── Declaration row + computer copy notice ────────────────── */
+.pt-decl {
+  padding: 6px 12px;
+  border-top: 1.5px solid #000;
+  text-align: center;
+  font-size: 10px;
+}
+.pt-decl__label {
+  font-weight: 700;
+}
+.pt-decl-note {
+  padding: 4px;
+  text-align: center;
+  font-style: italic;
+  font-size: 10px;
+}
+
+/* ── Delivery challan footer (3-col) ───────────────────────── */
+.pt-dc-footer {
+  display: flex;
+  border-top: 1.5px solid #000;
+  min-height: 110px;
+}
+.pt-dc-receiver {
+  flex: 1;
+  border-right: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+.pt-dc-receiver__label {
+  font-weight: 700;
+  font-style: italic;
+  text-decoration: underline;
+}
+.pt-dc-receiver__row {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  font-style: italic;
+  font-size: 10px;
+}
+.pt-dc-receiver__contact {
+  flex: 1;
+  border-right: 1.5px solid #000;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  font-style: italic;
+}
+.pt-dc-receiver__contact-label {
+  font-weight: 700;
+  font-style: italic;
+}
+.pt-dc-receiver__sign {
+  margin-top: auto;
+  text-align: center;
+  font-size: 10px;
+}
+.pt-dc-sign {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+.pt-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
