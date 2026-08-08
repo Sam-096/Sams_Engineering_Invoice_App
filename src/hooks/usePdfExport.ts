@@ -40,6 +40,17 @@ export const usePdfExport = () => {
     window.print();
   }, []);
 
+  /**
+   * WhatsApp (mobile or Web) cannot receive a file via a `wa.me` deep link —
+   * that surface only accepts a pre-filled text message, so this opens a
+   * chat/share sheet with a message telling the recipient a PDF is attached,
+   * leaving the actual attach step to the user from their downloaded file.
+   */
+  const handleShareWhatsApp = useCallback((message: string) => {
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const handleDownloadPdf = useCallback(async ({ filename }: PdfTarget) => {
     const node = document.getElementById(EXPORT_ROOT_ID);
     if (!node) {
@@ -67,10 +78,58 @@ export const usePdfExport = () => {
     const isMobile = isMobileViewport();
     const captureScale = isMobile ? 1.5 : 2;
 
-    let canvas = await html2canvas(node, {
+    const captureOptions = {
       scale: captureScale,
       useCORS: true,
       backgroundColor: '#ffffff',
+    } as const;
+
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Paginated templates (Invoice/Proforma) render one `.pt-doc` per A4
+    // sheet, each already laid out to fit within one page — capture each
+    // separately so no row is ever cut across the page boundary.
+    const pageNodes = Array.from(node.querySelectorAll<HTMLElement>('.pt-doc'));
+
+    if (pageNodes.length > 1) {
+      for (let i = 0; i < pageNodes.length; i++) {
+        const pageNode = pageNodes[i];
+        let canvas = await html2canvas(pageNode, {
+          ...captureOptions,
+          width: pageNode.offsetWidth,
+          height: pageNode.offsetHeight,
+          windowWidth: pageNode.offsetWidth,
+          windowHeight: pageNode.offsetHeight,
+        });
+        if (isCanvasBlank(canvas)) {
+          await nextFrame();
+          canvas = await html2canvas(pageNode, {
+            ...captureOptions,
+            width: pageNode.offsetWidth,
+            height: pageNode.offsetHeight,
+            windowWidth: pageNode.offsetWidth,
+            windowHeight: pageNode.offsetHeight,
+          });
+        }
+        if (i > 0) pdf.addPage();
+        const naturalHeight = (canvas.height * pageWidth) / canvas.width;
+        pdf.addImage(
+          canvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          0,
+          pageWidth,
+          Math.min(naturalHeight, pageHeight),
+        );
+      }
+      deliverPdf(pdf, filename);
+      return;
+    }
+
+    let canvas = await html2canvas(node, {
+      ...captureOptions,
       width: node.offsetWidth,
       height: node.offsetHeight,
       windowWidth: node.offsetWidth,
@@ -83,9 +142,7 @@ export const usePdfExport = () => {
       await nextFrame();
       await nextFrame();
       canvas = await html2canvas(node, {
-        scale: captureScale,
-        useCORS: true,
-        backgroundColor: '#ffffff',
+        ...captureOptions,
         width: node.offsetWidth,
         height: node.offsetHeight,
         windowWidth: node.offsetWidth,
@@ -99,9 +156,6 @@ export const usePdfExport = () => {
       }
     }
 
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
     const naturalHeight = (canvas.height * pageWidth) / canvas.width;
     const imgData = canvas.toDataURL('image/png');
 
@@ -112,7 +166,8 @@ export const usePdfExport = () => {
       // near-duplicate page (the original "invoice appears twice" bug).
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
     } else {
-      // Genuine multi-page: slice the canvas into A4-height pixel chunks
+      // Genuine multi-page fallback (templates that don't yet self-paginate,
+      // e.g. Delivery Challan): slice the canvas into A4-height pixel chunks
       // and emit each as its own page image — no overlap.
       const pxPerMm = canvas.width / pageWidth;
       const slicePxHeight = Math.floor(pageHeight * pxPerMm);
@@ -148,7 +203,7 @@ export const usePdfExport = () => {
     deliverPdf(pdf, filename);
   }, []);
 
-  return { handlePrint, handleDownloadPdf };
+  return { handlePrint, handleDownloadPdf, handleShareWhatsApp };
 };
 
 /* ─── helpers ──────────────────────────────────────────────────── */

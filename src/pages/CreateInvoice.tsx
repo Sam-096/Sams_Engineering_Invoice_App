@@ -48,8 +48,13 @@ const inr = (n: number) => `₹ ${n.toFixed(2)}`;
 export function CreateInvoice() {
   const { formData, setFormData, updateField, selectedCustomer, handleCustomerSelect, resetForm } =
     useDocumentForm<InvoiceDocument>(initialInvoice, { persistKey: 'sams.draft.invoice' });
-  const { handlePrint, handleDownloadPdf } = usePdfExport();
+  const { handlePrint, handleDownloadPdf, handleShareWhatsApp } = usePdfExport();
   const { peekNext, commitIfMatches } = useNextDocNumber('invoice');
+
+  const invoiceFilename = () => {
+    const base = formData.invoiceNo?.trim() || 'SAMS-INVOICE-draft';
+    return base.startsWith('SAMS-INVOICE') ? base : `${base}`;
+  };
 
   // Prefill the next sequential invoice number on a fresh form.
   useEffect(() => {
@@ -97,11 +102,18 @@ export function CreateInvoice() {
       subtitle="New Document"
       onPrint={handlePrint}
       onDownloadPdf={async () => {
-        const base = formData.invoiceNo?.trim() || 'SAMS-INVOICE-draft';
-        const filename = base.startsWith('SAMS-INVOICE') ? base : `SAMS-INVOICE-${base}`;
-        await handleDownloadPdf({ filename });
+        await handleDownloadPdf({ filename: invoiceFilename() });
         commitIfMatches(formData.invoiceNo);
       }}
+      onShareWhatsApp={selectedCustomer ? async () => {
+        await handleDownloadPdf({ filename: invoiceFilename() });
+        commitIfMatches(formData.invoiceNo);
+        handleShareWhatsApp(
+          `Invoice ${formData.invoiceNo} for ${selectedCustomer.billingName} — ` +
+          `Grand Total ${inr(formData.grandTotal)}.\n` +
+          `The PDF just downloaded to your device — please attach it to this chat.`,
+        );
+      } : undefined}
       onReset={resetForm}
       disabledReason={disabledReason}
       preview={<InvoicePrintTemplate data={formData} customer={selectedCustomer} />}

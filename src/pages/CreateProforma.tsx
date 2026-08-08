@@ -30,8 +30,13 @@ const inr = (n: number) => `₹ ${n.toFixed(2)}`;
 export function CreateProforma() {
   const { formData, setFormData, updateField, selectedCustomer, handleCustomerSelect, resetForm } =
     useDocumentForm<ProformaDocument>(initialProforma, { persistKey: 'sams.draft.proforma' });
-  const { handlePrint, handleDownloadPdf } = usePdfExport();
+  const { handlePrint, handleDownloadPdf, handleShareWhatsApp } = usePdfExport();
   const { peekNext, commitIfMatches } = useNextDocNumber('proforma');
+
+  const proformaFilename = () => {
+    const base = formData.quotationNo?.trim() || 'SAMS-PROFORMA-draft';
+    return base.startsWith('SAMS-PROFORMA') ? base : `SAMS-PROFORMA-${base}`;
+  };
 
   useEffect(() => {
     if (!formData.quotationNo) updateField('quotationNo', peekNext());
@@ -74,11 +79,18 @@ export function CreateProforma() {
       subtitle="New Document"
       onPrint={handlePrint}
       onDownloadPdf={async () => {
-        const base = formData.quotationNo?.trim() || 'SAMS-PROFORMA-draft';
-        const filename = base.startsWith('SAMS-PROFORMA') ? base : `SAMS-PROFORMA-${base}`;
-        await handleDownloadPdf({ filename });
+        await handleDownloadPdf({ filename: proformaFilename() });
         commitIfMatches(formData.quotationNo);
       }}
+      onShareWhatsApp={selectedCustomer ? async () => {
+        await handleDownloadPdf({ filename: proformaFilename() });
+        commitIfMatches(formData.quotationNo);
+        handleShareWhatsApp(
+          `Proforma Invoice ${formData.quotationNo} for ${selectedCustomer.billingName} — ` +
+          `Grand Total ${inr(formData.grandTotal)}.\n` +
+          `The PDF just downloaded to your device — please attach it to this chat.`,
+        );
+      } : undefined}
       onReset={resetForm}
       disabledReason={disabledReason}
       preview={<ProformaPrintTemplate data={formData} customer={selectedCustomer} />}

@@ -1,12 +1,15 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, RotateCcw, Eye, X, Download } from 'lucide-react';
+import { Printer, RotateCcw, Eye, X, Download, MessageCircle } from 'lucide-react';
 
 interface Props {
   title: string;
   subtitle?: string;
   onPrint: () => void;
-  onDownloadPdf?: () => void;
+  onDownloadPdf?: () => void | Promise<void>;
+  /** Shares via WhatsApp. Receives the PDF download as a prerequisite, so this
+   * should download the PDF first, then open the WhatsApp share sheet. */
+  onShareWhatsApp?: () => void | Promise<void>;
   onReset?: () => void;
   preview: ReactNode;
   children: ReactNode;
@@ -25,10 +28,42 @@ interface Props {
  * the mobile transform-scale that would otherwise shrink the captured output.
  */
 export function DocumentFormShell({
-  title, subtitle, onPrint, onDownloadPdf, onReset, preview, children, disabledReason,
+  title, subtitle, onPrint, onDownloadPdf, onShareWhatsApp, onReset, preview, children, disabledReason,
 }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Tracks which async action (if any) is in flight, so the buttons can show
+  // a busy state and can't be double-tapped while a PDF is still rendering —
+  // easy to trigger twice on mobile where generation takes a beat.
+  const [busyAction, setBusyAction] = useState<'pdf' | 'whatsapp' | null>(null);
   const disabled = Boolean(disabledReason);
+  const isBusy = busyAction !== null;
+
+  // Mobile preview is scaled down with `transform: scale()`, which doesn't
+  // shrink the element's layout box — so the scaled wrapper needs its real
+  // (unscaled) height in px to size itself correctly, especially now that
+  // multi-page invoices make the preview taller than a single A4 sheet.
+  const paperRef = useRef<HTMLDivElement>(null);
+  const scaleBoxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const paper = paperRef.current;
+    const box = scaleBoxRef.current;
+    if (!paper || !box) return;
+    const ro = new ResizeObserver(([entry]) => {
+      box.style.setProperty('--preview-content-h', `${entry.contentRect.height}px`);
+    });
+    ro.observe(paper);
+    return () => ro.disconnect();
+  }, []);
+
+  const runBusy = async (action: 'pdf' | 'whatsapp', fn: () => void | Promise<void>) => {
+    if (isBusy) return;
+    setBusyAction(action);
+    try {
+      await fn();
+    } finally {
+      setBusyAction(null);
+    }
+  };
 
   return (
     <div className="form-shell">
@@ -64,22 +99,34 @@ export function DocumentFormShell({
               type="button"
               onClick={onPrint}
               className="sw-btn-ghost"
-              disabled={disabled}
+              disabled={disabled || isBusy}
               title={disabledReason}
             >
               <Printer size={14} />
               Print
             </button>
+            {onShareWhatsApp && (
+              <button
+                type="button"
+                onClick={() => runBusy('whatsapp', onShareWhatsApp)}
+                className="sw-btn-whatsapp"
+                disabled={disabled || isBusy}
+                title={disabledReason}
+              >
+                <MessageCircle size={14} />
+                {busyAction === 'whatsapp' ? 'Preparing…' : 'Share'}
+              </button>
+            )}
             {onDownloadPdf && (
               <button
                 type="button"
-                onClick={onDownloadPdf}
+                onClick={() => runBusy('pdf', onDownloadPdf)}
                 className="sw-btn-primary"
-                disabled={disabled}
+                disabled={disabled || isBusy}
                 title={disabledReason}
               >
                 <Download size={14} />
-                Save PDF
+                {busyAction === 'pdf' ? 'Generating…' : 'Save PDF'}
               </button>
             )}
           </div>
@@ -100,7 +147,9 @@ export function DocumentFormShell({
           </button>
         </div>
         <div className="form-shell__preview-scroll">
-          <div className="form-shell__preview-paper">{preview}</div>
+          <div className="form-shell__preview-scale-box" ref={scaleBoxRef}>
+            <div className="form-shell__preview-paper" ref={paperRef}>{preview}</div>
+          </div>
         </div>
       </aside>
 

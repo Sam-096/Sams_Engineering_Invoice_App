@@ -29,6 +29,28 @@
   background: #fff;
 }
 
+/* Multi-page documents: visually separate stacked A4 sheets on screen,
+   and force a real page break between them for both browser Print and the
+   canvas-based PDF exporter (which captures each `.pt-doc` as its own page). */
+.pt-doc + .pt-doc {
+  margin-top: 6mm;
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+@media print {
+  .pt-doc {
+    page-break-after: always;
+    break-after: page;
+  }
+  .pt-doc:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .pt-doc + .pt-doc {
+    margin-top: 0;
+    box-shadow: none;
+  }
+}
+
 .pt-frame {
   border: 1.5px solid #000;
 }

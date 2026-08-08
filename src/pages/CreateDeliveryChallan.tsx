@@ -29,8 +29,13 @@ const challanTypeOptions: ReadonlyArray<{ value: ChallanType; label: string }> =
 export function CreateDeliveryChallan() {
   const { formData, updateField, selectedCustomer, handleCustomerSelect, resetForm } =
     useDocumentForm<DeliveryChallanDocument>(initialChallan, { persistKey: 'sams.draft.deliveryChallan' });
-  const { handlePrint, handleDownloadPdf } = usePdfExport();
+  const { handlePrint, handleDownloadPdf, handleShareWhatsApp } = usePdfExport();
   const { peekNext, commitIfMatches } = useNextDocNumber('deliveryChallan');
+
+  const dcFilename = () => {
+    const base = formData.dcNo?.trim() || 'SAMS-DC-draft';
+    return base.startsWith('SAMS-DC') ? base : `SAMS-DC-${base}`;
+  };
 
   useEffect(() => {
     if (!formData.dcNo) updateField('dcNo', peekNext());
@@ -54,11 +59,17 @@ export function CreateDeliveryChallan() {
       subtitle="New Document"
       onPrint={handlePrint}
       onDownloadPdf={async () => {
-        const base = formData.dcNo?.trim() || 'SAMS-DC-draft';
-        const filename = base.startsWith('SAMS-DC') ? base : `SAMS-DC-${base}`;
-        await handleDownloadPdf({ filename });
+        await handleDownloadPdf({ filename: dcFilename() });
         commitIfMatches(formData.dcNo);
       }}
+      onShareWhatsApp={selectedCustomer ? async () => {
+        await handleDownloadPdf({ filename: dcFilename() });
+        commitIfMatches(formData.dcNo);
+        handleShareWhatsApp(
+          `Delivery Challan ${formData.dcNo} for ${selectedCustomer.billingName}.\n` +
+          `The PDF just downloaded to your device — please attach it to this chat.`,
+        );
+      } : undefined}
       onReset={resetForm}
       disabledReason={disabledReason}
       preview={<DeliveryChallanPrintTemplate data={formData} customer={selectedCustomer} />}
