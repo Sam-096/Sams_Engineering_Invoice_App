@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { CustomerMaster } from '../types';
-import { customers } from '../data/customers';
+import { getAllCustomers } from '../data/customerStore';
 import { useLocalStorage } from './useLocalStorage';
 
 interface Options {
@@ -28,7 +28,7 @@ export function useDocumentForm<T>(initialState: T, options: Options = {}) {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerMaster | null>(() => {
     const initialCustomerId = (formData as unknown as { customerId?: string }).customerId;
     if (!initialCustomerId) return null;
-    return customers.find((c) => c.id === initialCustomerId) ?? null;
+    return getAllCustomers().find((c) => c.id === initialCustomerId) ?? null;
   });
 
   const updateField = useCallback(
@@ -39,7 +39,7 @@ export function useDocumentForm<T>(initialState: T, options: Options = {}) {
   );
 
   const handleCustomerSelect = useCallback((customerId: string) => {
-    setSelectedCustomer(customers.find((c) => c.id === customerId) ?? null);
+    setSelectedCustomer(getAllCustomers().find((c) => c.id === customerId) ?? null);
   }, []);
 
   const resetForm = useCallback(() => {
