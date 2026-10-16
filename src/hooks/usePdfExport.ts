@@ -243,14 +243,19 @@ async function waitForImages(root: HTMLElement): Promise<void> {
 
 function isCanvasBlank(canvas: HTMLCanvasElement): boolean {
   if (canvas.width < 50 || canvas.height < 50) return true;
-  const ctx = canvas.getContext('2d');
+  // Scan the WHOLE page, not just its centre: with few line items the
+  // centre of a valid A4 sheet is the empty filler area, which made the
+  // old centre-only probe report a false "blank" and abort the save.
+  // Downscale first so the scan is cheap; averaging keeps thin borders and
+  // text visible as non-white pixels.
+  const probe = document.createElement('canvas');
+  probe.width = 120;
+  probe.height = Math.max(1, Math.round((canvas.height / canvas.width) * 120));
+  const ctx = probe.getContext('2d');
   if (!ctx) return false;
-  // Sample a small area at the centre; if every pixel is fully transparent
-  // or pure white, treat as blank.
   try {
-    const x = Math.floor(canvas.width / 2);
-    const y = Math.floor(canvas.height / 2);
-    const data = ctx.getImageData(Math.max(0, x - 25), Math.max(0, y - 25), 50, 50).data;
+    ctx.drawImage(canvas, 0, 0, probe.width, probe.height);
+    const data = ctx.getImageData(0, 0, probe.width, probe.height).data;
     for (let i = 0; i < data.length; i += 4) {
       const a = data[i + 3];
       if (a === 0) continue;

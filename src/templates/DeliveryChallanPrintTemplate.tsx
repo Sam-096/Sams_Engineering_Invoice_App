@@ -1,12 +1,12 @@
 import type { DeliveryChallanDocument, CustomerMaster } from '../types';
 import { formatDate } from '../utils/formatDate';
 import { usePagedItems } from './usePagedItems';
-import { MM_PX } from './pagination';
 import {
   PrintCustomerAddresses,
   PrintEmptyPreview,
   PrintKvDivider,
   PrintKvRow,
+  PrintKvTable,
   PrintKvRowWithDate,
   PrintLetterhead,
   PrintTaxStrip,
@@ -22,10 +22,10 @@ interface Props {
 const COLS = 7; // SL, Part, Desc, QTY, UNIT, HSN, REMARKS
 
 export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
-  const { chromeRef, infoRef, theadRef, footerRef, rowRef, pages, fillerPx } =
+  const { chromeRef, infoRef, theadRef, footerRef, rowRef, frameRef, pages, fillerFor } =
     usePagedItems(data.groupedLineItems.length, [
       data.groupedLineItems, customer, data.challanType, data.remarks, data.poNo, data.contactNo,
-    ], 90 * MM_PX);
+    ]);
 
   if (!customer) return <PrintEmptyPreview />;
 
@@ -51,7 +51,7 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
 
         return (
           <div className="pt-doc" key={pageIdx}>
-            <div className="pt-frame">
+            <div className="pt-frame" ref={frameRef(pageIdx)}>
               <div ref={isFirst ? chromeRef : undefined}>
                 <PrintTitleBar title="DELIVERY CHALLAN" copy={copy} subtitle={subtitle} />
                 <PrintLetterhead />
@@ -59,7 +59,7 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
               </div>
 
               {isFirst && (
-                <div className="pt-info">
+                <div className="pt-info" ref={infoRef}>
                   <div className="pt-info__addresses">
                     <PrintCustomerAddresses
                       customer={customer}
@@ -67,7 +67,7 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
                       shippingHeading="Shipping Address:"
                     />
                   </div>
-                  <div className="pt-info__meta" ref={infoRef}>
+                  <PrintKvTable>
                     <PrintKvRowWithDate
                       label="D.C. No"
                       value={data.dcNo}
@@ -83,7 +83,7 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
                     <PrintKvRow label="Date of Dispatch :" value={formatDate(data.dateOfDispatch)} />
                     <PrintKvDivider>Remarks : {data.remarks || '-'}</PrintKvDivider>
                     <PrintKvRow label="P.O No :" value={data.poNo} variant="grow" />
-                  </div>
+                  </PrintKvTable>
                 </div>
               )}
 
@@ -118,17 +118,17 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
                             <div className="pt-items__desc-extra">{item.extraDescription}</div>
                           )}
                         </td>
-                        <td>{item.qty}</td>
+                        <td className="pt-items__num">{item.qty}</td>
                         <td>{item.unit}</td>
                         <td>{item.hsnSacCode}</td>
                         <td>{item.remarks}</td>
                       </tr>
                     );
                   })}
-                  {isLast && fillerPx > 0 && (
+                  {fillerFor(pageIdx) > 0 && (
                     <tr className="pt-items__filler">
                       {Array.from({ length: COLS }).map((_, i) => (
-                        <td key={i} style={{ height: `${fillerPx}px` }} />
+                        <td key={i} style={{ height: `${fillerFor(pageIdx)}px` }} />
                       ))}
                     </tr>
                   )}
@@ -136,7 +136,7 @@ export function DeliveryChallanPrintTemplate({ data, customer }: Props) {
               </table>
 
               {isLast && (
-                <div ref={footerRef} className="pt-dc-footer">
+                <div ref={footerRef} className="pt-dc-footer pt-page-footer">
                   <div className="pt-dc-receiver">
                     <div className="pt-dc-receiver__label">Receiver's Name</div>
                     <div className="pt-dc-receiver__sign">Receiver's Sign With Stamp</div>

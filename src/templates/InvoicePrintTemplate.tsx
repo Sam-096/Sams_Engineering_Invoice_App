@@ -10,6 +10,7 @@ import {
   PrintKvDivider,
   PrintKvNote,
   PrintKvRow,
+  PrintKvTable,
   PrintKvRowWithDate,
   PrintLetterhead,
   PrintSignatureBlock,
@@ -31,7 +32,7 @@ const fmt = (n: number) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const pct = (n: number) => `${n}%`;
 
 export function InvoicePrintTemplate({ data, customer }: Props) {
-  const { chromeRef, infoRef, theadRef, totalsRef, footerRef, rowRef, pages, fillerPx } =
+  const { chromeRef, infoRef, theadRef, totalsRef, footerRef, rowRef, frameRef, pages, fillerFor } =
     usePagedItems(data.lineItems.length, [
       data.lineItems, customer, data.taxMode, data.remarks, data.sezNote,
       data.lutNo, data.transportMode, data.transportRegNo,
@@ -60,7 +61,7 @@ export function InvoicePrintTemplate({ data, customer }: Props) {
 
         return (
           <div className="pt-doc" key={pageIdx}>
-            <div className="pt-frame">
+            <div className="pt-frame" ref={frameRef(pageIdx)}>
               <div ref={isFirst ? chromeRef : undefined}>
                 <PrintTitleBar title="TAX INVOICE" copy={copy} />
                 <PrintLetterhead />
@@ -68,11 +69,11 @@ export function InvoicePrintTemplate({ data, customer }: Props) {
               </div>
 
               {isFirst && (
-                <div className="pt-info">
+                <div className="pt-info" ref={infoRef}>
                   <div className="pt-info__addresses">
                     <PrintCustomerAddresses customer={customer} />
                   </div>
-                  <div className="pt-info__meta" ref={infoRef}>
+                  <PrintKvTable>
                     <PrintKvRowWithDate
                       label="Invoice No."
                       value={data.invoiceNo}
@@ -99,7 +100,7 @@ export function InvoicePrintTemplate({ data, customer }: Props) {
                     <PrintKvDivider>Remarks : {data.remarks}</PrintKvDivider>
                     {data.lutNo && <PrintKvNote>LUT NO : {data.lutNo}</PrintKvNote>}
                     {isSez && data.sezNote && <PrintKvNote>{data.sezNote}</PrintKvNote>}
-                  </div>
+                  </PrintKvTable>
                 </div>
               )}
 
@@ -132,17 +133,17 @@ export function InvoicePrintTemplate({ data, customer }: Props) {
                           )}
                         </td>
                         <td>{item.hsnSacCode}</td>
-                        <td>{String(item.qty).padStart(2, '0')}</td>
+                        <td className="pt-items__num">{String(item.qty).padStart(2, '0')}</td>
                         <td>{item.unit}</td>
-                        <td>{fmt(Number(item.rate))}</td>
+                        <td className="pt-items__num">{fmt(Number(item.rate))}</td>
                         <td className="pt-items__amount">{fmt(Number(item.amount))}</td>
                       </tr>
                     );
                   })}
-                  {isLast && fillerPx > 0 && (
+                  {fillerFor(pageIdx) > 0 && (
                     <tr className="pt-items__filler">
                       {Array.from({ length: COLS }).map((_, i) => (
-                        <td key={i} style={{ height: `${fillerPx}px` }} />
+                        <td key={i} style={{ height: `${fillerFor(pageIdx)}px` }} />
                       ))}
                     </tr>
                   )}
@@ -195,7 +196,7 @@ export function InvoicePrintTemplate({ data, customer }: Props) {
               </table>
 
               {isLast && (
-                <div ref={footerRef}>
+                <div ref={footerRef} className="pt-page-footer">
                   <PrintWordsRow words={`${data.amountInWords}`} />
                   <div className="pt-footer">
                     <PrintBankBlock />

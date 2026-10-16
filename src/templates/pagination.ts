@@ -1,18 +1,17 @@
 /**
- * Multi-page layout math for the item-table print templates (Invoice, Proforma).
+ * Multi-page layout math for the item-table print templates (Invoice,
+ * Proforma, Delivery Challan).
  *
- * The old templates rendered every line item into one continuously-growing
- * `.pt-doc` and padded the bottom with a fixed 40mm filler row. Once a
- * document had enough items (or long wrapped descriptions) to exceed one A4
- * page, that filler pushed the totals block past the page boundary and the
- * PDF exporter sliced the resulting canvas at an arbitrary pixel offset —
- * cutting rows in half and sometimes leaving the grand-total row stranded
- * alone on page 2.
+ * `packRows` decides which items belong on which A4 page, given the real
+ * measured height of every row plus the fixed chrome around it, and keeps the
+ * totals/footer block glued to the last page that has room for it (never
+ * printed alone).
  *
- * `packRows` fixes this at the data level: given the real measured height of
- * every row plus the fixed chrome around it, it decides exactly which items
- * belong on which page, and keeps the totals/footer block glued to the last
- * page that has room for it (never printed alone).
+ * The empty "filler" row that pushes the totals/bank/signature block down to
+ * the bottom of each sheet is NOT computed here — `usePagedItems` sizes it
+ * from the actually-rendered page, so it always fills exactly the leftover
+ * space (shrinking to nothing as items are added) instead of relying on
+ * estimates or a fixed cap.
  */
 
 /** CSS mm→px is a fixed constant per spec (96px/in ÷ 25.4mm/in) — reliable regardless of device DPI. */
@@ -22,32 +21,27 @@ const PAGE_HEIGHT_MM = 297;
 const PAGE_PADDING_MM = 6; // `.pt-doc` padding, top + bottom
 const PAGE_SAFETY_MM = 3; // margin of error so content never kisses the page edge
 
-/** Usable height (px) inside one printed page, after `.pt-doc` padding and a safety margin. */
-export const PAGE_BUDGET_PX = (PAGE_HEIGHT_MM - PAGE_PADDING_MM * 2 - PAGE_SAFETY_MM) * MM_PX;
+/** Height (px) inside one `.pt-doc` sheet, after its padding. The frame must never exceed this. */
+export const PAGE_INNER_PX = (PAGE_HEIGHT_MM - PAGE_PADDING_MM * 2) * MM_PX;
 
-/** Default hard cap on the cosmetic filler row so it never grows taller than the original fixed-height look. */
-export const MAX_FILLER_PX = 40 * MM_PX;
-
-export interface PackedPages {
-  /** Item indices grouped per page, in order. Always has at least one (possibly empty) page. */
-  pages: number[][];
-  /** Height (px) to give the filler row on the final page so it visually fills the sheet. 0 if none fits. */
-  fillerPx: number;
-}
+/** Usable height (px) for packing rows, keeping a safety margin below `PAGE_INNER_PX`. */
+export const PAGE_BUDGET_PX = PAGE_INNER_PX - PAGE_SAFETY_MM * MM_PX;
 
 /**
  * Greedily bin-packs item rows into pages, then applies a "keep totals with
  * the last item(s)" rule: if the footer block doesn't fit alongside the rows
  * already assigned to the last page, rows are pushed onto a fresh page
  * instead of letting the footer print by itself.
+ *
+ * Returns item indices grouped per page, in order. Always has at least one
+ * (possibly empty) page.
  */
 export function packRows(
   rowHeights: number[],
   page1Budget: number,
   contBudget: number,
   footerHeight: number,
-  maxFillerPx: number = MAX_FILLER_PX,
-): PackedPages {
+): number[][] {
   const pages: number[][] = [[]];
   let used = 0;
   let budget = page1Budget;
@@ -69,17 +63,10 @@ export function packRows(
     const last = pages[pages.length - 1];
     const lastBudget = pages.length === 1 ? page1Budget : contBudget;
     const lastUsed = last.reduce((sum, i) => sum + rowHeights[i], 0);
-    if (last.length === 0 || lastUsed + footerHeight <= lastBudget) {
-      return { pages, fillerPx: clampFiller(lastBudget - lastUsed - footerHeight, maxFillerPx) };
-    }
+    if (last.length === 0 || lastUsed + footerHeight <= lastBudget) return pages;
     const moved = last.pop()!;
     if (last.length === 0) pages.pop(); // drop the now-empty page instead of leaving a gap
     pages.push([moved]);
   }
-  return { pages, fillerPx: 0 };
-}
-
-function clampFiller(px: number, maxPx: number): number {
-  if (!Number.isFinite(px) || px <= 0) return 0;
-  return Math.min(px, maxPx);
+  return pages;
 }

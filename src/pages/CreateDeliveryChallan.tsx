@@ -6,6 +6,7 @@ import { Field, SelectField } from '../components/Field';
 import { DeliveryChallanPrintTemplate } from '../templates/DeliveryChallanPrintTemplate';
 import { useDocumentForm } from '../hooks/useDocumentForm';
 import { usePdfExport } from '../hooks/usePdfExport';
+import { exportDeliveryChallanXlsx } from '../utils/excelExport';
 import { useNextDocNumber } from '../hooks/useNextDocNumber';
 import { validateDeliveryChallan, hasErrors } from '../utils/validate';
 import type { DeliveryChallanDocument } from '../types';
@@ -70,6 +71,7 @@ export function CreateDeliveryChallan() {
           `The PDF just downloaded to your device — please attach it to this chat.`,
         );
       } : undefined}
+      onExportExcel={selectedCustomer ? () => exportDeliveryChallanXlsx(formData, selectedCustomer, dcFilename()) : undefined}
       onReset={resetForm}
       disabledReason={disabledReason}
       preview={<DeliveryChallanPrintTemplate data={formData} customer={selectedCustomer} />}

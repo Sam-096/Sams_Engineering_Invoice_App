@@ -9,6 +9,7 @@ import { useDocumentForm } from '../hooks/useDocumentForm';
 import { calculateTaxes } from '../utils/tax';
 import { amountToWords } from '../utils/amountToWords';
 import { usePdfExport } from '../hooks/usePdfExport';
+import { exportInvoiceXlsx } from '../utils/excelExport';
 import { useNextDocNumber } from '../hooks/useNextDocNumber';
 import { validateInvoice, hasErrors } from '../utils/validate';
 import { taxRules } from '../data/taxRules';
@@ -114,6 +115,7 @@ export function CreateInvoice() {
           `The PDF just downloaded to your device — please attach it to this chat.`,
         );
       } : undefined}
+      onExportExcel={selectedCustomer ? () => exportInvoiceXlsx(formData, selectedCustomer, invoiceFilename()) : undefined}
       onReset={resetForm}
       disabledReason={disabledReason}
       preview={<InvoicePrintTemplate data={formData} customer={selectedCustomer} />}

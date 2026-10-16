@@ -92,22 +92,42 @@ export function PrintCustomerAddresses({
   );
 }
 
+/**
+ * Right-hand meta column of the info block (invoice no., dates, refs…), as a
+ * real 4-column table: Label | Value | "Date :" | Date Value. Rows without a
+ * date span the value across the last three columns. Children are the
+ * `PrintKv*` row components below.
+ */
+export function PrintKvTable({ children }: { children: ReactNode }) {
+  return (
+    <div className="pt-info__meta">
+      <table className="pt-kv-table">
+        <colgroup>
+          <col style={{ width: '34%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '34%' }} />
+        </colgroup>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
 interface KvRowProps {
   label: string;
   value: ReactNode;
-  variant?: 'default' | 'tall' | 'grow';
+  /** `grow` makes this row absorb any spare height so the column lines up with the address column. */
+  variant?: 'default' | 'grow';
 }
 
-/** Two-cell row: label | value. */
+/** Two-cell row: label | value (value spans the date columns). */
 export function PrintKvRow({ label, value, variant = 'default' }: KvRowProps) {
-  const cls = variant === 'tall' ? 'pt-kv pt-kv--tall'
-    : variant === 'grow' ? 'pt-kv pt-kv--grow'
-    : 'pt-kv';
   return (
-    <div className={cls}>
-      <div className="pt-kv__label">{label}</div>
-      <div className="pt-kv__value">{value}</div>
-    </div>
+    <tr className={variant === 'grow' ? 'pt-kv-table__grow' : undefined}>
+      <th scope="row" className="pt-kv-table__label">{label}</th>
+      <td className="pt-kv-table__value" colSpan={3}>{value}</td>
+    </tr>
   );
 }
 
@@ -121,21 +141,31 @@ interface KvRowWithDateProps {
 /** Four-cell row: Label | Value | "Date :" | Date Value (matches the right meta column in samples). */
 export function PrintKvRowWithDate({ label, value, dateLabel = 'Date :', dateValue }: KvRowWithDateProps) {
   return (
-    <div className="pt-kv pt-kv--with-date">
-      <div className="pt-kv__label">{label}</div>
-      <div className="pt-kv__value">{value}</div>
-      <div className="pt-kv__date-label">{dateLabel}</div>
-      <div className="pt-kv__date-value">{dateValue}</div>
-    </div>
+    <tr>
+      <th scope="row" className="pt-kv-table__label">{label}</th>
+      <td className="pt-kv-table__value">{value}</td>
+      <th scope="row" className="pt-kv-table__label">{dateLabel}</th>
+      <td className="pt-kv-table__date">{dateValue}</td>
+    </tr>
   );
 }
 
+/** Full-width section heading inside the meta table (e.g. "TERMS & CONDITIONS:"). */
 export function PrintKvDivider({ children }: { children: ReactNode }) {
-  return <div className="pt-kv-divider">{children}</div>;
+  return (
+    <tr className="pt-kv-table__divider">
+      <td colSpan={4}>{children}</td>
+    </tr>
+  );
 }
 
+/** Full-width small italic note row (LUT number, SEZ note). */
 export function PrintKvNote({ children }: { children: ReactNode }) {
-  return <div className="pt-kv-note">{children}</div>;
+  return (
+    <tr className="pt-kv-table__note">
+      <td colSpan={4}>{children}</td>
+    </tr>
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -172,10 +202,14 @@ export function PrintTotalRow({
 /** Amount-in-words row immediately below the items table. */
 export function PrintWordsRow({ words }: { words: string }) {
   return (
-    <div className="pt-words">
-      <div className="pt-words__label">Amount in words</div>
-      <div className="pt-words__value">{words}</div>
-    </div>
+    <table className="pt-words">
+      <tbody>
+        <tr>
+          <th scope="row" className="pt-words__label">Amount in words</th>
+          <td className="pt-words__value">{words}</td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -185,21 +219,23 @@ export function PrintWordsRow({ words }: { words: string }) {
 
 export function PrintBankBlock() {
   return (
-    <div className="pt-bank">
-      <BankRow label="NAME OF THE BANK" value={sellerProfile.bankName} />
-      <BankRow label="ACCOUNT NUMBER" value={sellerProfile.accountNumber} />
-      <BankRow label="IFSC CODE" value={sellerProfile.ifsc} />
-      <BankRow label="BRANCH" value={sellerProfile.branch} />
-    </div>
+    <table className="pt-bank">
+      <tbody>
+        <BankRow label="NAME OF THE BANK" value={sellerProfile.bankName} />
+        <BankRow label="ACCOUNT NUMBER" value={sellerProfile.accountNumber} />
+        <BankRow label="IFSC CODE" value={sellerProfile.ifsc} />
+        <BankRow label="BRANCH" value={sellerProfile.branch} />
+      </tbody>
+    </table>
   );
 }
 
 function BankRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="pt-bank__row">
-      <div className="pt-bank__key">{label}</div>
-      <div className="pt-bank__val">{value}</div>
-    </div>
+    <tr>
+      <th scope="row" className="pt-bank__key">{label}</th>
+      <td className="pt-bank__val">{value}</td>
+    </tr>
   );
 }
 

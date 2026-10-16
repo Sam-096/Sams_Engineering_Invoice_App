@@ -47,18 +47,16 @@ export const customers: CustomerMaster[] = [
     tags: ['proforma', 'triovision']
   },
   {
-    id: 'tech-cnc-solutions',
-    displayName: 'M/S. TECH CNC SOLUTIONS',
-    billingName: 'MS.TECH CNC SOLUTIONS',
-    shippingName: 'MS.TECH CNC SOLUTIONS',
+    id: 'lamtuf-limited',
+    displayName: 'LAMTUF LIMITED',
+    billingName: 'LAMTUF LIMITED',
+    shippingName: 'LAMTUF LIMITED',
     addressLines: [
-      'NO: 103, 4th Cross, 2nd Main Road',
-      'Pragathi Layout, Janapriya Township,',
-      'Kadabagere, Bangaluru, Karnataka - 562130. India'
+      'Plot no 81P 91P-94P PHASAMYLARAM INDUSTRIAL AREA SANGAREDDY DISTRICT -502325.TELANGANA'
     ],
-    state: 'Karnataka',
-    stateCode: '29',
-    gstin: '29AIZPN8763G1Z6',
-    tags: ['invoice', 'tech-cnc']
+    state: 'Telangana',
+    stateCode: '36',
+    gstin: '36AAACL1804C1Z6',
+    tags: ['invoice', 'LAMTUF']
   }
 ];

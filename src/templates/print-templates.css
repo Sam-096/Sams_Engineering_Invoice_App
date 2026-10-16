@@ -23,10 +23,14 @@
   min-height: 297mm;
   padding: 6mm;
   box-sizing: border-box;
-  font-family: var(--font);
+  /* Arial: metric-stable across the browser preview, print and the PDF capture. */
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 11px;
   color: #000;
   background: #fff;
+  /* Column flex so the frame always stretches to the full A4 sheet. */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Multi-page documents: visually separate stacked A4 sheets on screen,
@@ -53,6 +57,20 @@
 
 .pt-frame {
   border: 1.5px solid #000;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+/* Header / info / items table keep their natural height; the table's filler
+   row (sized by `usePagedItems`) absorbs the leftover space on each sheet. */
+.pt-frame > * {
+  flex: 0 0 auto;
+}
+/* Anchors words / bank / signature / declaration to the bottom of the sheet.
+   The filler normally makes this a no-op; it only matters before the filler
+   has been measured, so the footer never floats mid-page. */
+.pt-frame > .pt-page-footer {
+  margin-top: auto;
 }
 
 /* ── Title bar (inside frame, very top) ────────────────────── */
@@ -165,77 +183,46 @@
   margin-top: 4px;
 }
 
-/* ── Meta KV rows on the right column ──────────────────────── */
-.pt-kv {
-  display: flex;
+/* ── Meta table on the right column ───────────────────────── */
+/* Label | Value | "Date :" | Date — a real table so columns line up across
+   rows; rows without a date span the value over the last three columns. */
+.pt-kv-table {
+  width: 100%;
+  flex: 1 1 auto; /* stretch to match the address column's height */
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.pt-kv-table th,
+.pt-kv-table td {
+  height: 22px;
+  padding: 4px 6px;
   border-bottom: 1px solid #000;
-  min-height: 22px;
-  align-items: stretch;
-}
-.pt-kv:last-child {
-  border-bottom: none;
-}
-.pt-kv__label {
-  flex: 0 0 40%;
-  padding: 4px 6px;
-  font-weight: 700;
   border-right: 1px solid #000;
-  display: flex;
-  align-items: center;
-}
-.pt-kv__value {
-  flex: 1;
-  padding: 4px 6px;
+  vertical-align: middle;
   font-weight: 700;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  word-wrap: break-word;
 }
-
-/* 4-cell variant: Label | Value | Date : | Date Value */
-.pt-kv--with-date .pt-kv__label {
-  flex: 0 0 26%;
-}
-.pt-kv--with-date .pt-kv__value {
-  flex: 0 0 22%;
-  border-right: 1px solid #000;
-}
-.pt-kv--with-date .pt-kv__date-label {
-  flex: 0 0 14%;
-  padding: 4px 6px;
-  font-weight: 700;
-  border-right: 1px solid #000;
-  display: flex;
-  align-items: center;
-}
-.pt-kv--with-date .pt-kv__date-value {
-  flex: 1;
-  padding: 4px 6px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pt-kv--tall { min-height: 28px; }
-.pt-kv--grow { flex: 1; min-height: 28px; }
-
-/* Section divider inside the meta column (e.g. TERMS & CONDITIONS:) */
-.pt-kv-divider {
-  padding: 4px 8px;
-  font-weight: 700;
+.pt-kv-table th:last-child,
+.pt-kv-table td:last-child { border-right: none; }
+.pt-kv-table tr:last-child th,
+.pt-kv-table tr:last-child td { border-bottom: none; }
+.pt-kv-table__label { text-align: left; }
+.pt-kv-table__value { text-align: center; }
+.pt-kv-table__date { text-align: center; font-weight: 400 !important; }
+/* Spare height goes to this row, not spread across every row. */
+.pt-kv-table tr.pt-kv-table__grow { height: 100%; }
+.pt-kv-table tr.pt-kv-table__grow > * { height: auto; }
+.pt-kv-table__divider td {
   font-style: italic;
   text-decoration: underline;
-  border-bottom: 1px solid #000;
+  padding: 4px 8px;
 }
-
-.pt-kv-note {
+.pt-kv-table__note td {
+  height: auto;
   padding: 2px 8px;
   font-style: italic;
   font-size: 10px;
   font-weight: 600;
-  border-bottom: 1px solid #000;
 }
 
 /* ── Items table (continuous with totals/words) ────────────── */
@@ -265,7 +252,7 @@
 }
 .pt-items td:last-child { border-right: none; }
 
-.pt-items__desc {
+.pt-items td.pt-items__desc {
   text-align: left;
   word-wrap: break-word;
   white-space: pre-wrap;
@@ -279,7 +266,12 @@
   text-align: right;
   display: block;
 }
-.pt-items__amount {
+/* Quantities and rates: right-aligned so decimals line up. */
+.pt-items td.pt-items__num {
+  text-align: right;
+  padding-right: 6px;
+}
+.pt-items td.pt-items__amount {
   text-align: right;
   padding-right: 8px;
   font-weight: 600;
@@ -290,10 +282,14 @@
   text-decoration: underline;
 }
 
-/* Empty filler rows: keep vertical column borders, no horizontal */
+/* Empty filler row: keeps the vertical column borders running down to the
+   totals. Height is set inline per page and the row is removed entirely
+   once the items fill the sheet. */
 .pt-items tr.pt-items__filler td {
   border-bottom: none;
   padding: 0;
+  line-height: 0;
+  font-size: 0;
 }
 
 /* Totals integrated as full-width rows, separated by a thicker top */
@@ -323,21 +319,24 @@
 
 /* ── Amount in words row ───────────────────────────────────── */
 .pt-words {
-  display: flex;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
   border-top: 1.5px solid #000;
-  align-items: stretch;
 }
 .pt-words__label {
-  flex: 0 0 22%;
+  width: 22%;
   padding: 6px 8px;
+  text-align: left;
   font-weight: 700;
   border-right: 1px solid #000;
+  vertical-align: middle;
 }
 .pt-words__value {
-  flex: 1;
   padding: 6px 8px;
   font-style: italic;
   font-weight: 700;
+  vertical-align: middle;
 }
 
 /* ── Bank + signature section ──────────────────────────────── */
@@ -348,32 +347,24 @@
 }
 .pt-bank {
   width: 60%;
+  border-collapse: collapse;
+  table-layout: fixed;
   border-right: 1.5px solid #000;
-  display: flex;
-  flex-direction: column;
 }
-.pt-bank__row {
-  display: flex;
+.pt-bank th,
+.pt-bank td {
+  height: 22px;
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 700;
+  vertical-align: middle;
   border-bottom: 1px solid #000;
-  min-height: 22px;
 }
-.pt-bank__row:last-child {
-  border-bottom: none;
-}
+.pt-bank tr:last-child th,
+.pt-bank tr:last-child td { border-bottom: none; }
 .pt-bank__key {
-  flex: 0 0 38%;
-  padding: 4px 8px;
-  font-weight: 700;
+  width: 38%;
   border-right: 1px solid #000;
-  display: flex;
-  align-items: center;
-}
-.pt-bank__val {
-  flex: 1;
-  padding: 4px 8px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
 }
 
 .pt-sign {

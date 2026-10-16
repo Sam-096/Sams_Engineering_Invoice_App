@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, RotateCcw, Eye, X, Download, MessageCircle } from 'lucide-react';
+import { Printer, RotateCcw, Eye, X, Download, MessageCircle, FileSpreadsheet } from 'lucide-react';
 
 interface Props {
   title: string;
@@ -10,6 +10,8 @@ interface Props {
   /** Shares via WhatsApp. Receives the PDF download as a prerequisite, so this
    * should download the PDF first, then open the WhatsApp share sheet. */
   onShareWhatsApp?: () => void | Promise<void>;
+  /** Downloads an editable .xlsx copy of the document (live formulas for amounts and totals). */
+  onExportExcel?: () => void | Promise<void>;
   onReset?: () => void;
   preview: ReactNode;
   children: ReactNode;
@@ -28,13 +30,13 @@ interface Props {
  * the mobile transform-scale that would otherwise shrink the captured output.
  */
 export function DocumentFormShell({
-  title, subtitle, onPrint, onDownloadPdf, onShareWhatsApp, onReset, preview, children, disabledReason,
+  title, subtitle, onPrint, onDownloadPdf, onShareWhatsApp, onExportExcel, onReset, preview, children, disabledReason,
 }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
   // Tracks which async action (if any) is in flight, so the buttons can show
   // a busy state and can't be double-tapped while a PDF is still rendering —
   // easy to trigger twice on mobile where generation takes a beat.
-  const [busyAction, setBusyAction] = useState<'pdf' | 'whatsapp' | null>(null);
+  const [busyAction, setBusyAction] = useState<'pdf' | 'whatsapp' | 'excel' | null>(null);
   const disabled = Boolean(disabledReason);
   const isBusy = busyAction !== null;
 
@@ -55,7 +57,7 @@ export function DocumentFormShell({
     return () => ro.disconnect();
   }, []);
 
-  const runBusy = async (action: 'pdf' | 'whatsapp', fn: () => void | Promise<void>) => {
+  const runBusy = async (action: 'pdf' | 'whatsapp' | 'excel', fn: () => void | Promise<void>) => {
     if (isBusy) return;
     setBusyAction(action);
     try {
@@ -117,6 +119,18 @@ export function DocumentFormShell({
                 {busyAction === 'whatsapp' ? 'Preparing…' : 'Share'}
               </button>
             )}
+            {onExportExcel && (
+              <button
+                type="button"
+                onClick={() => runBusy('excel', onExportExcel)}
+                className="sw-btn-ghost"
+                disabled={disabled || isBusy}
+                title={disabledReason ?? 'Download an editable Excel copy'}
+              >
+                <FileSpreadsheet size={14} />
+                {busyAction === 'excel' ? 'Exporting…' : 'Excel'}
+              </button>
+            )}
             {onDownloadPdf && (
               <button
                 type="button"
@@ -148,7 +162,11 @@ export function DocumentFormShell({
         </div>
         <div className="form-shell__preview-scroll">
           <div className="form-shell__preview-scale-box" ref={scaleBoxRef}>
-            <div className="form-shell__preview-paper" ref={paperRef}>{preview}</div>
+            {/* Keyed on open state: the template remounts when the mobile overlay is
+                revealed from `display: none`, so its page layout is measured fresh. */}
+            <div className="form-shell__preview-paper" ref={paperRef}>
+              <Fragment key={previewOpen ? 'open' : 'closed'}>{preview}</Fragment>
+            </div>
           </div>
         </div>
       </aside>
